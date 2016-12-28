@@ -28,8 +28,8 @@ class QLearningAgent(ReinforcementAgent):
   def __init__(self, **args):
     "You can initialize Q-values here..."
     ReinforcementAgent.__init__(self, **args)
+    self.Q = {}
 
-    "*** YOUR CODE HERE ***"
   
   def getQValue(self, state, action):
     """
@@ -37,10 +37,8 @@ class QLearningAgent(ReinforcementAgent):
       Should return 0.0 if we never seen
       a state or (state,action) tuple 
     """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-  
-    
+    return self.Q.get((state, action), 0.0)
+
   def getValue(self, state):
     """
       Returns max_action Q(state,action)        
@@ -49,17 +47,45 @@ class QLearningAgent(ReinforcementAgent):
       terminal state, you should return a value of 0.0.
     """
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-    
+    pacman_state = state.getPacmanState()
+    legalActions = self.getLegalActions(state)
+    if len(legalActions) == 0:
+      return 0.0
+
+    # Iterate over all the legal actions we have and find the max Q from it
+    best_q = -sys.maxsize
+    for action in legalActions:
+      new_pos = Actions.getSuccessor(pacman_state.getPosition(), action)
+      current_q = self.Q.get((pacman_state.getPosition(), new_pos), 0.0)
+      if current_q > best_q:
+        best_q = current_q
+
+    if best_q == -sys.maxsize:
+      best_q = 0.0
+
+    return best_q
+
   def getPolicy(self, state):
     """
       Compute the best action to take in a state.  Note that if there
       are no legal actions, which is the case at the terminal state,
       you should return None.
     """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-    
+    pacman_state = state.getPacmanState()
+    legalActions = self.getLegalActions(state)
+    best_q = -sys.maxsize
+    best_action = None
+    for action in legalActions:
+      new_pos = Actions.getSuccessor(pacman_state.getPosition(), action)
+      current_q = self.Q.get((pacman_state.getPosition(), new_pos), 0.0)
+      if current_q > best_q:
+        best_q = current_q
+        best_action = action
+
+    action = best_action
+
+    return action
+
   def getAction(self, state):
     """
       Compute the action to take in the current state.  With
@@ -72,13 +98,46 @@ class QLearningAgent(ReinforcementAgent):
       HINT: To pick randomly from a list, use random.choice(list)
     """  
     # Pick Action
+    probability = random.random()
     legalActions = self.getLegalActions(state)
-    action = None
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-    
+
+    if probability > self.epsilon:
+      action = random.choice(legalActions)
+    else:
+      # Find the best action from the Q values computed so far
+      action = self.getPolicy(state)
+
     return action
-  
+
+  def getReward(self, state):
+    pacman_state = state.getPacmanState()
+    pos = pacman_state.getPosition()
+
+    if state.isLose():
+      return -1000.0
+
+    if state.isWin():
+      return 1000.0
+
+    reward = 0.0
+    if state.hasFood(pos[0], pos[1]):
+      reward += 1.0
+
+    capsules = state.getCapsules()
+    if len(capsules) > 0 and capsules[pos[0]][pos[1]] is True:
+      reward += 10.0
+
+    ghost_states = state.getGhostStates()
+
+    # We have already checked for win or lose condition so the only
+    # way a ghost and player can share a position is if the ghost is
+    # scared
+    for ghost_state in ghost_states:
+      if ghost_state.getPosition() == pos:
+        reward += 50.0
+
+    return reward
+
   def update(self, state, action, nextState, reward):
     """
       The parent class calls this to observe a 
@@ -88,9 +147,16 @@ class QLearningAgent(ReinforcementAgent):
       NOTE: You should never call this function,
       it will be called on your behalf
     """
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-    
+    pacman_state = state.getPacmanState()
+    current_pos = pacman_state.getPosition()
+    new_pos = Actions.getSuccessor(current_pos, action)
+    current_val = self.Q.get((current_pos, new_pos), 0.0)
+
+    # Transition to the new pos and find the best policy for it
+    pacman_state.pos = new_pos
+    self.Q[(current_pos, new_pos)] = self.alpha * (self.getReward(state) + self.getValue(state) - current_val)
+
+
 class PacmanQAgent(QLearningAgent):
   "Exactly the same as QLearningAgent, but with different default parameters"
   

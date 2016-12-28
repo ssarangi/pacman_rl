@@ -592,7 +592,8 @@ def runGames( layout, pacman, ghosts, display, numGames, record, numTraining = 0
   games = []
 
   for i in range( numGames ):
-    beQuiet = i < numTraining
+    # beQuiet = i < numTraining
+    beQuiet = False
     if beQuiet:
         # Suppress output and graphics
         import textDisplay
